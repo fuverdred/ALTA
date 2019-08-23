@@ -3,7 +3,7 @@ from machine import Pin
 import math
 import time
 
-class MAX31865()
+class MAX31865():
 
    ### Register constants, see data sheet for info.
    # Read Addresses
@@ -31,46 +31,47 @@ class MAX31865()
    MAX31865_CONFIG_AUTO        = 0x40
    MAX31865_CONFIG_BIAS_ON     = 0x80
 
-   def __init__(self, wires=2, cs_pin='P9')
+   def __init__(self, wires=2, cs_pin='X5'):
       # initialize ``P9`` in gpio mode and make it an CS output
       self.CS = Pin(cs_pin, mode=Pin.OUT)
       self.CS(True)  # init chip select
-      self.spi = SPI(0, mode=SPI.MASTER, baudrate=100000, polarity=0, phase=1, firstbit=SPI.MSB)
+      self.spi = SPI(1, mode=SPI.MASTER, baudrate=100000,
+                     polarity=0, phase=1, firstbit=SPI.MSB)
 
       # set configuration register
       config = self.MAX31865_CONFIG_BIAS_ON + self.MAX31865_CONFIG_AUTO + self.MAX31865_CONFIG_CLEAR_FAULT + self.MAX31865_CONFIG_50HZ_FILTER
-      if (wires == 3)
+      if (wires == 3):
           config = config + MAX31865_CONFIG_3WIRE
 
       buf = bytearray(2)
       buf[0] = self.MAX31865_REG_WRITE_CONFIG  # config write address
       buf[1] = config
       self.CS(False)                      # Select chip
-      nw=self.spi.write(buf)              # write config
+      nw=self.spi.send(buf)              # write config
       self.CS(True)
 
       self.RefR = 430.0
       self.R0  = 100.0
 
-   def _RawToTemp(self, raw)
-      RTD = (raw  self.RefR)  (32768)
+   def _RawToTemp(self, raw):
+      RTD = (raw * self.RefR) / (32768)
       A = 3.908e-3
       B = -5.775e-7
-      return (-A + math.sqrt(AA - 4B(1-RTDself.R0)))  (2B), RTD
+      return (-A + math.sqrt(A*A - 4*B*(1-RTD/self.R0))) / (2*B), RTD
 
-   def read(self)
+   def read(self):
       temp = self._read()
       return temp
 
-   def _read(self)
+   def _read(self):
        self.CS(False)
-       nw=self.spi.write(bytes([0x01])) # first read address
-       MSB = self.spi.read(1)           # multi-byte transfer
-       LSB = self.spi.read(1)
+       nw=self.spi.send(bytes([0x01])) # first read address
+       MSB = self.spi.recv(1)           # multi-byte transfer
+       LSB = self.spi.recv(1)
        self.CS(True)
 
-       raw = (MSB[0]  8) + LSB[0]
-       raw = raw  1
+       raw = (MSB[0] << 8) + LSB[0]
+       raw = raw >> 1
        # print( 'raw ', raw)
        temp, RTD = self._RawToTemp(raw)
        return temp
