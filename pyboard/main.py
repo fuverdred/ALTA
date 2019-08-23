@@ -2,7 +2,7 @@ import time
 from pyb import SPI, Pin
 
 from MAX31865 import MAX31865
-from MAX31855 import MAX31855
+from MAX31855_corrected import MAX31855
 
 ptd = MAX31865()
 
