@@ -22,13 +22,13 @@ class MAX31855():
             #This should be expanded for the first 3 bits which have
             #specific errors
 
-        internal_temperature = reference >> 4
+        internal_temperature = (reference >> 4) * 0.0625
 
         if temperature & 0x01:
             print("Some sort of error has occurred, soz")
-        temperature >>= 2 # Get rid of first 2 bits leaving 14 bit Temperature
+        temperature = (temperature >> 2)/4 # Get rid of first 2 bits leaving 14 bit Temperature
 
         voltage = (temperature - internal_temperature) * 0.041276
 
-        return temperature, reference_temperature, voltage
+        return temperature #, internal_temperature, voltage
         

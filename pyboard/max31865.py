@@ -1,7 +1,5 @@
-from machine import SPI
-from machine import Pin
-import math
-import time
+from machine import SPI, Pin
+import ustruct
 
 class MAX31865():
 
@@ -31,47 +29,47 @@ class MAX31865():
    MAX31865_CONFIG_AUTO        = 0x40
    MAX31865_CONFIG_BIAS_ON     = 0x80
 
-   def __init__(self, wires=2, cs_pin='X5'):
-      # initialize ``P9`` in gpio mode and make it an CS output
-      self.CS = Pin(cs_pin, mode=Pin.OUT)
-      self.CS(True)  # init chip select
-      self.spi = SPI(1, mode=SPI.MASTER, baudrate=100000,
-                     polarity=0, phase=1, firstbit=SPI.MSB)
+   def __init__(self, spi, cs_pin, wires=2):
+      self.cs_pin = cs_pin
+      self.cs_pin(True) # Set high immediately
+      self.spi = spi
+      self.wires = wires
 
       # set configuration register
-      config = self.MAX31865_CONFIG_BIAS_ON + self.MAX31865_CONFIG_AUTO + self.MAX31865_CONFIG_CLEAR_FAULT + self.MAX31865_CONFIG_50HZ_FILTER
-      if (wires == 3):
-          config = config + MAX31865_CONFIG_3WIRE
+      config = (self.MAX31865_CONFIG_BIAS_ON +
+                self.MAX31865_CONFIG_AUTO +
+                self.MAX31865_CONFIG_CLEAR_FAULT +
+                self.MAX31865_CONFIG_50HZ_FILTER)
+      if (self.wires == 3):
+          config += MAX31865_CONFIG_3WIRE
 
       buf = bytearray(2)
       buf[0] = self.MAX31865_REG_WRITE_CONFIG  # config write address
       buf[1] = config
-      self.CS(False)                      # Select chip
-      nw=self.spi.send(buf)              # write config
-      self.CS(True)
+      self.cs_pin(False) # Select chip
+      _ = self.spi.send(buf) # write config
+      self.cs_pin(True)
 
-      self.RefR = 430.0
-      self.R0  = 100.0
+      self.RefR = 400.0 # Ohms, this is R7 on the board
+      self.R0  = 100.0 # Ohms, Using a PT100
 
    def _RawToTemp(self, raw):
-      RTD = (raw * self.RefR) / (32768)
-      A = 3.908e-3
-      B = -5.775e-7
-      return (-A + math.sqrt(A*A - 4*B*(1-RTD/self.R0))) / (2*B), RTD
+      '''
+      In our temperature range the resistance is very linear.
+      Using the IEC 751 standard, alpha is 0.00385, y intercept = 100
+      '''
+      RTD = (raw * self.RefR) / (32768) # 32768=2^15
+      m = 0.385 # Ohms/degC
+      return (1/m) * (RTD - 100), RTD
 
    def read(self):
-      temp = self._read()
+      raw = bytearray(2)
+      self.cs_pin(False) # Select chip
+      _ = self.spi.send(bytes([0x01])) # first read address
+      raw = self.spi.recv(2)           # multi-byte transfer
+      self.cs_pin(True)
+
+      raw_int = ustruct.unpack('>H', raw)[0]
+      raw_int >>= 1 # fifteen bit integer is sent
+      temp, RTD = self._RawToTemp(raw_int)
       return temp
-
-   def _read(self):
-       self.CS(False)
-       nw=self.spi.send(bytes([0x01])) # first read address
-       MSB = self.spi.recv(1)           # multi-byte transfer
-       LSB = self.spi.recv(1)
-       self.CS(True)
-
-       raw = (MSB[0] << 8) + LSB[0]
-       raw = raw >> 1
-       # print( 'raw ', raw)
-       temp, RTD = self._RawToTemp(raw)
-       return temp
