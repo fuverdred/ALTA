@@ -91,43 +91,25 @@ def LDR_temp_dependence(filename, duration=600):
             time.sleep(1)
 
 def freeze_testing(filename):
-    low = 2600 #  Below this drop is frozen
-    high = 2800 #  Above this drop is liquid
-    ldr = ldr_pin.read()
+    relay_1(False) #  start cooling
     start = millis()
-    with open('data/' + filename, 'w') as f:
-        print("COOLING")
-        relay_1(False) #  Start cooling
-        while ldr > low:
-            ldr = ldr_pin.read()
+    t = start
+    with open('data/intensity_freeze_melt.csv', 'w') as f:
+        while t < 200000:
             t = millis() - start
-            f.write(','.join([str(i) for i in (t, ldr)])+'\n')
-            print(t, '\t', ldr)
-            time.sleep_ms(100)
-        print("FROZEN")
-        pause = (millis() + (30*1000)) - start # wait for 30 seconds
-        while t < pause:
-            t = millis() - start
+            T = ptd.read()
             ldr = ldr_pin.read()
-            f.write(','.join([str(i) for i in (t, ldr)])+'\n')
-            print(t, '\t', ldr)
-            time.sleep_ms(100)
-        print("HEATING (passive)")
+            s = ','.join([str(i) for i in (t, T, ldr)])
+            print(s)
+            _ = f.write(s + '\n')
         relay_1(True)
-        while(ldr < high):
-            ldr = ldr_pin.read()
+        while T < 18:
             t = millis() - start
-            f.write(','.join([str(i) for i in (t, ldr)])+'\n')
-            print(t, '\t', ldr)
-            time.sleep_ms(100)
-        print("MELTED")
-        pause = (millis() + (30*1000)) - start # wait for 30 seconds
-        while t < pause:
-            t = millis() - start
+            T = ptd.read()
             ldr = ldr_pin.read()
-            f.write(','.join([str(i) for i in (t, ldr)])+'\n')
-            print(t, '\t', ldr)
-            time.sleep_ms(100)
+            s = ','.join([str(i) for i in (t, T, ldr)])
+            print(s)
+            _ = f.write(s + '\n')
             
             
             
