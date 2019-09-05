@@ -72,4 +72,5 @@ class MAX31865():
       raw_int = ustruct.unpack('>H', raw)[0]
       raw_int >>= 1 # fifteen bit integer is sent
       temp, RTD = self._RawToTemp(raw_int)
+      temp = float('%.1f'%temp)
       return temp
