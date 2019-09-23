@@ -19,11 +19,11 @@ class ALTA():
         self.set_point = -15
         self.pw = 0 #  MOSFET off
         self.T = self.ptd.read() #  deg C
-        self.delay = 100 #  ms
+        self.delay = 200 #  ms
         self.start = millis()
         self.t = self.start
         
-        self.K_c = -10
+        self.K_c = -5
         self.tau_I = 124
         self.I = 0
 
@@ -55,7 +55,7 @@ class ALTA():
 
         while self.t < self.start + 600 * 1e3:
             self.T = self.ptd.read()
-            self.T_k = self.k.read()
+            self.T_k = self.k.read()[0]
             self.t = millis() - self.start
             self.pw = self.proportion()
             self.pwm_channel.pulse_width_percent(self.pw)
@@ -74,9 +74,10 @@ class ALTA():
     def linear_cool(self):
         def target_T(t):
             return rate * t + initial_T
-            
+
+        rate_min = -5 #  degc/min
         min_in_ms = 60 * 1000
-        rate = -1 / min_in_ms # degc / ms
+        rate = rate_min / min_in_ms # degc / ms
 
         initial_T = self.ptd.read()
         initial_t = millis()
@@ -91,7 +92,7 @@ class ALTA():
         while self.t < initial_t + 1000 * 60 *5:
             self.t = millis() - initial_t
             self.T = self.ptd.read()
-            self.T_k = self.k.read()
+            self.T_k = self.k.read()[0]
             self.set_point = target_T(self.t)
             self.pw = self.proportion()
             self.pwm_channel.pulse_width_percent(self.pw)
