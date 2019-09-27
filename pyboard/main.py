@@ -3,7 +3,7 @@ from pyb import SPI, Pin, millis, Timer
 import uheapq
 
 from MAX31865 import MAX31865
-from MAX31855_corrected import MAX31855
+from MAX31855 import MAX31855
 from ALTA import ALTA
 
 ##  INITIALISE PLATINUM RESISTANCE THERMOMETER (MAX31865)
@@ -44,7 +44,7 @@ ldr_pin = pyb.ADC(Pin('Y11'))
 ## SETUP PWM
 
 pwm_pin = Pin('X10')
-tim = Timer(4, freq=1000)
+tim = Timer(4, freq=100)
 ch = tim.channel(2, Timer.PWM, pin=pwm_pin)
 ch.pulse_width_percent(0)
 
@@ -214,59 +214,156 @@ def PWM_test(filename):
     relay_1(True)
     ch.pulse_width_percent(0)
 
-def thingy_test(filename):
+def doublet_test(filename, set_pw):
     start = millis()
-    pw = 60
+    pw = set_pw
 
-    t = millis()
+    t = 0
     T = ptd.read()
     T_k = k.read()
     
     ch.pulse_width_percent(pw)
     relay_1(False)
+
+
+    print(f'\t Going to {pw} pulse width')
     
     with open('data/' + filename, 'w') as f:
-        while t < start + 600 * 1000:
-            t = millis()
+        while t < + 800 * 1000:
+            t = millis() - start
             T = ptd.read()
-            T_k = k.read()
+            T_k = k.read()[0]
             _ = f.write(','.join([str(i) for i in (t, pw, T, T_k)]) + '\n')
-            print(t, '\t', T, '\t', T_k)
-            time.sleep(1)
+            #print(t, '\t', T, '\t', T_k)
+            time.sleep_ms(200)
 
-        print('Going to 100% pulse width')
-        pw = 70
+        pw += 10
+        print(f'\t Going to {pw} pulse width')
         ch.pulse_width_percent(pw)
-        while t < start + (600 + 600) * 1000:
-            t = millis()
+        while t < (800 + 600) * 1000:
+            t = millis() - start
             T = ptd.read()
-            T_k = k.read()
+            T_k = k.read()[0]
             _ = f.write(','.join([str(i) for i in (t, pw, T, T_k)]) + '\n')
-            print(t, '\t', T, '\t', T_k)
-            time.sleep(1)
+            #print(t, '\t', T, '\t', T_k)
+            time.sleep_ms(200)
 
-        print('Going to 0% pulse width')
-        pw = 50
+        pw -= 20
+        print(f'\t Going to {pw} pulse width')
         ch.pulse_width_percent(pw)
-        while t < start + (600 + 600 + 600)*1000:
-            t = millis()
+        while t < (800 + 600 + 600)*1000:
+            t = millis() - start
             T = ptd.read()
-            T_k = k.read()
+            T_k = k.read()[0]
             _ = f.write(','.join([str(i) for i in (t, pw, T, T_k)]) + '\n')
-            print(t, '\t', T, '\t', T_k)
-            time.sleep(1)
+            #print(t, '\t', T, '\t', T_k)
+            time.sleep_ms(200)
 
-        print('Going back to 50% pulse width')
-        pw = 60
+        pw = set_pw
+        print(f'\t Going back to {pw} pulse width')
         ch.pulse_width_percent(pw)
-        while t < start + (600 + 600 + 600 + 600) * 1000:
-            t = millis()
+        while t < (800 + 600 + 600 + 600) * 1000:
+            t = millis() - start
             T = ptd.read()
-            T_k = k.read()
+            T_k = k.read()[0]
             _ = f.write(','.join([str(i) for i in (t, pw, T, T_k)]) + '\n')
-            print(t, '\t', T, '\t', T_k)
-            time.sleep(1)
+            #print(t, '\t', T, '\t', T_k)
+            time.sleep_ms(200)
 
-#thingy_test('thingy_test.csv')
-    
+
+def timing_test(filename):
+    start = millis()
+    relay_1(False)
+    ch.pulse_width_percent(100)
+
+    t = 0
+    T = ptd.read()
+    T_k = k.read()[0]
+
+    f = open('data/'+filename, 'w')
+
+    while T_k > -20:
+        t = millis() - start
+        T = ptd.read()
+        T_k = k.read()[0]
+
+        s = ','.join([str(i) for i in (t, T, T_k)])+'\n'
+        _ = f.write(s)
+        print(s, end='')
+        time.sleep_ms(200)
+
+    relay_1(True)
+    relay_2(False) #  Heating
+
+    while T < 20:
+        t = millis() - start
+        T = ptd.read()
+        T_k = k.read()[0]
+
+        s = ','.join([str(i) for i in (t, T, T_k)])+'\n'
+        _ = f.write(s)
+        print(s, end='')
+        time.sleep_ms(200)
+
+    relay_2(True)
+    ch.pulse_width_percent(0)
+
+    while abs(T - T_k) > 1:
+        t = millis() - start
+        T = ptd.read()
+        T_k = k.read()[0]
+
+        s = ','.join([str(i) for i in (t, T, T_k)])+'\n'
+        _ = f.write(s)
+        print(s, end='')
+        time.sleep_ms(200)
+
+    relay_1(False)
+    ch.pulse_width_percent(100)
+
+    while T_k > -20:
+        t = millis() - start
+        T = ptd.read()
+        T_k = k.read()[0]
+
+        s = ','.join([str(i) for i in (t, T, T_k)])+'\n'
+        _ = f.write(s)
+        print(s, end='')
+        time.sleep_ms(200)
+
+    relay_1(True)
+    relay_2(False) #  Heating
+
+    while T < 20:
+        t = millis() - start
+        T = ptd.read()
+        T_k = k.read()[0]
+
+        s = ','.join([str(i) for i in (t, T, T_k)])+'\n'
+        _ = f.write(s)
+        print(s, end='')
+        time.sleep_ms(200)
+
+    relay_2(True)
+    ch.pulse_width_percent(0)
+
+    while abs(T - T_k) > 1:
+        t = millis() - start
+        T = ptd.read()
+        T_k = k.read()[0]
+
+        s = ','.join([str(i) for i in (t, T, T_k)])+'\n'
+        _ = f.write(s)
+        print(s, end='')
+        time.sleep_ms(200)
+
+    f.close()
+
+def n_doublet_test():
+    for i in (10, 20, 30, 40, 50, 60, 90):
+        filename = '27.09/doublet_test_{i}_{i+10}_{i-20}_{i}.csv'
+        print(filename)
+        doublet_test(filename, i)
+    relay_1(True)
+    ch.pulse_width_percent(0)
 

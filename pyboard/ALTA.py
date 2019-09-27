@@ -23,25 +23,33 @@ class ALTA():
         self.start = millis()
         self.t = self.start
         
-        self.K_c = -5
-        self.tau_I = 124
+        self.K_c = -8.0
+        self.tau_I = 126
+        self.tau_D = 2.5
+        self.alpha = 1.0
         self.I = 0
 
 
     def proportion(self):
         e = self.set_point - self.T
+        
         P = self.K_c * e
+        
         self.I += e * (self.delay/1000)
         I = (self.K_c/self.tau_I) * self.I
-        PI = P + I
-        if PI > 100:
+
+        D = -1 * self.K_c * self.tau_D * (self.T-self.last_T)/self.delay
+        self.last_T = self.T 
+        
+        PID = P + I + D
+        if PID > 100:
             return 100 #  100 is the maximum value
-        if PI < 0:
+        if PID < 0:
             return 0
-        return PI
+        return int(PID)
 
     def loop_to_target(self, set_point):
-        filename = 'PI_Kc'+str(self.K_c)+'_limit'+str(set_point)+'.csv'
+        filename = 'PID_Kc'+str(self.K_c)+'_limit'+str(set_point)+'.csv'
         self.f = open('data/'+filename, 'w')
 
         self.I = 0 #  resest PID control
@@ -50,10 +58,14 @@ class ALTA():
         self.T = self.ptd.read()
         if self.T > self.set_point:
             self.relay_1(False) #  Cooling mode
+
+        self.I = 0 #  resest PID control
+        self.last_T = self.T #  for calculating derivative
+        
         self.start = millis()
         self.t = self.start
 
-        while self.t < self.start + 600 * 1e3:
+        while self.t < self.start + 300 * 1e3:
             self.T = self.ptd.read()
             self.T_k = self.k.read()[0]
             self.t = millis() - self.start
@@ -71,11 +83,64 @@ class ALTA():
         self.pwm_channel.pulse_width_percent(0)
         self.relay_1(True)
 
-    def linear_cool(self):
+    def fast_loop(self, set_point):
+        filename = 'fix_fast_cool_to_'+str(set_point)+'_Kc_'+str(self.K_c)+'.csv'
+        self.f = open('data/'+filename, 'w')
+
+        self.set_point = set_point
+        self.T = self.ptd.read()
+
+        self.I = 0
+        self.last_T = self.T
+
+        self.start = millis()
+        self.t = self.start
+
+        self.relay_1(False) #  Cooling mode
+        self.pw = 100
+        self.pwm_channel.pulse_width_percent(self.pw) # Full gas cooling
+
+        while self.T > self.set_point + 0.5:
+            #Cool as quickly as possible to the limit in this loop
+            self.T = self.ptd.read()
+            self.T_k = self.k.read()[0]
+            self.t = millis() - self.start
+            _ = self.proportion() #  Start adding up the integral contribution
+
+            print(self.t, self.pw, self.T, self.T_k)
+            self.f.write(','.join([str(i) for i in (self.t,
+                                                self.pw,
+                                                self.T,
+                                                self.T_k)]) + '\n')
+            time.sleep_ms(self.delay)
+            self.last_T = self.T #  For when D in PID starts
+
+
+        while self.t < (500*1000):
+            #Hold the temp constant with PWM
+            self.T = self.ptd.read()
+            self.T_k = self.k.read()[0]
+            self.t = millis() - self.start
+
+            self.pw = self.proportion()
+            self.pwm_channel.pulse_width_percent(self.pw)
+            
+
+            print(self.t, self.pw, self.T, self.T_k)
+            self.f.write(','.join([str(i) for i in (self.t,
+                                                self.pw,
+                                                self.T,
+                                                self.T_k)]) + '\n')
+            time.sleep_ms(self.delay)
+
+        self.f.close()
+        self.relay_1(True)
+        self.pwm_channel.pulse_width_percent(0)
+
+    def linear_cool(self, rate_min):
         def target_T(t):
             return rate * t + initial_T
 
-        rate_min = -5 #  degc/min
         min_in_ms = 60 * 1000
         rate = rate_min / min_in_ms # degc / ms
 
@@ -86,10 +151,12 @@ class ALTA():
         self.t = initial_t
         self.T = initial_T
 
-        filename = 'linear_cool_Kc'+str(self.K_c)+'.csv'
+        self.last_T = self.T
+
+        filename = 'linear_cool_Kc'+str(self.K_c)+'_rate'+str(rate_min)+'.csv'
         self.f = open('data/'+filename, 'w')
 
-        while self.t < initial_t + 1000 * 60 *5:
+        while self.T > -20:
             self.t = millis() - initial_t
             self.T = self.ptd.read()
             self.T_k = self.k.read()[0]
