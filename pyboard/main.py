@@ -19,6 +19,8 @@ ptd = MAX31865(spi_PTD, cs_PTD)
 
 
 ## INITIALISE K TYPE THERMOCOUPLE (MAX31855)
+
+# This is not currently in use but I'll leave the code for posterity
 '''
 spi_K = SPI(2, # pyBoard harware SPI 2 (Y5, Y6, Y7, Y8)
             mode=SPI.MASTER,
@@ -32,6 +34,8 @@ k = MAX31855(spi_K, cs_K)
 '''
 
 ## INITIALISE INNER PTD
+# This is the PTD which is submerged in antifreeze and sits in the sample
+# chamber.
 spi_inner = SPI(2, # pyBoard hardware SPI 1 (X5, X6, X7, X8)
               mode=SPI.MASTER,
               baudrate=100000,
@@ -43,11 +47,11 @@ cs_inner = Pin('Y5', mode=Pin.OUT_PP) # Chip select pin
 inner = MAX31865(spi_inner, cs_inner)
 
 ## SETUP LDR
-
+# Light dependent resistor
 ldr_pin = pyb.ADC(Pin('Y12'))
 
 ## SETUP PWM
-
+# Pulse width modulation
 pwm_pin = Pin('Y4')
 tim = Timer(4, freq=100)
 ch = tim.channel(4, Timer.PWM, pin=pwm_pin)
@@ -64,6 +68,7 @@ i2c = I2C(1, I2C.MASTER)
 lcd = I2cLcd(i2c, lcd_address, 2, 16)
 
 ## SETUP RELAY
+# Also not currently in use, but doesn't do any harm.
 relay_1 = Pin('X11', mode=Pin.OUT_PP)
 relay_2 = Pin('X12', mode=Pin.OUT_PP)
 
@@ -78,6 +83,8 @@ alta = ALTA(ptd,
             relay_2)
 
 filepath = 'data/linear_test'
+
+# WRITE ANY CODE YOU WANT TO EXECUTE ON TURNING THE PYBOARD ON HERE
 
 #alta.linear_experiment(filepath)
   
