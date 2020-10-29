@@ -1,182 +1,388 @@
+'''
+======================================================
+Automated Lag-Time Apparatus (ALTA)
+======================================================
+
+This is the main library for ALTA, stored on github.com/fuverdred/ALTA
+
+## INPUTS & OUTPUTS
+
+Inputs:
+1. Aluminium body temperature from a platinum resistance thermometer drilled
+into the aluminium just below the sample vial.
+2. A light dependent resistor (LDR) value which dictataes whether or not
+the sample is frozen.
+
+Outputs:
+1. Relay settings. These control the direction of the flow of current as
+follows:
+                relay 1 |   on    | off
+                --------+-------------------
+        relay 2     on  |    -    |  Heating
+                    off | Cooling |     -
+                    
+2. Pulse width modulation (PWM) percentage duty cycle, which is smoothed to
+an approximate DC current (maximum 0.5A ripple)
+3. Fans. These are turned on for cooling and off for the rest as they are
+loud and annoying
+4. LCD screen for displaying the current status of ALTA
+
+
+## OUTPUT FORMAT
+While an experimental repeat is running the data is written to a file called
+running.csv.
+
+After completion of the run the file is renamed to reflect the outcome of
+the run, using the following format:
+
+1. Repeat number
+2. Experiment type (isothermal, linear)
+    2.1 Experiment temperature (isothermal only)
+    2.2 Outcome (early, frozen, liquid) # isothermal only
+3. Time to freeze (ms)/ frozen temperature (deg C) # isothermal/linear
+
+eg. 23_isothermal_frozen_-15.0_frozen_34200.csv
+Which is the 23rd repeat of an isothermal experiment at -15.0 deg C, which
+froze after 34200 ms at the target temperature.
+
+Each file contains the following columns, separated by commas:
+1. Time (ms)
+2. Aluminium temperature (deg C)
+    2.1 Internal temperature (deg C) for calibration
+3. LDR value (Arb units)
+4. ALTA status (cool, hold, heat)
+'''
+
+import os
 import time
-import urandom
 from pyb import SPI, Pin, millis, Timer
 
-from MAX31865 import MAX31865
-from MAX31855 import MAX31855
+from pi_controller import PI_Controller
 
 
 class ALTA():
-    def __init__(self, ptd, k, pwm_channel, relay_1, relay_2):
-        self.ptd = ptd
-        self.k = k
-        self.pwm_channel = pwm_channel
-        self.relay_1 = relay_1
-        self.relay_2 = relay_2
-        self.relay_1(True) #  off
-        self.relay_2(True) #  off
+    LDR_THRESHOLD = 150 # 150 less than the clear LDR value
+    MAXIMUM_WAIT = 1000 * 60 * 2.5 #1000 * 60 * 60 * 2 # (ms) 2 hours in ms
+    PWM_FIT_COEFFS = (32.913, -1.623, 0.014)
+    DELAY_MS = 200 # (ms), time between readings
+    DELAY_S = 0.2 # (s)
+    MELT_TEMPERATURE = 15 # (deg C)
+    MELT_TIME = 1000 * 60 # (s)
 
-        self.set_point = -15
-        self.pw = 0 #  MOSFET off
-        self.T = self.ptd.read() #  deg C
-        self.delay = 200 #  ms
-        self.start = millis()
-        self.t = self.start
+    K_C = -10 #  Proportional constant for PI control
+    TAU_I = 100 #  Integrational time constant for PI control
+    
+    def __init__(self,
+                 ptd,
+                 calibrate,
+                 pwm_channel,
+                 ldr_pin,
+                 lcd,
+                 fans_pin,
+                 relay_1,
+                 relay_2):
+        '''
+        ptd: platinum resistance thermometer (ptd) embedded in ALTA (MAX31865)
+        calibrate: ptd which can be placed inside sample for calibration
+        pwm_channel: A timer instance allowing PWM duty cycle to be set
+        ldr_pin: Analogue read instance for measuring LDR resistance
+        lcd: pyb_lcd_i2c instance for displaying messages on the LCD
+        fans_pin: GPIO pin for switching fans on and off
+        relay_1: GPIO pin for switching relay 1
+        relay_2: GPIO pin for switching relay 2
+        '''
+        self.ptd = ptd # MAX31865 
+        self.calibrate = calibrate # MAX31865
+        self.pwm_channel = pwm_channel # Timer channel instance
+        self.ldr_pin = ldr_pin # Analogue read instance
+        self.lcd = lcd # pyb_lcd_i2c instance
+        self.fans_pin = fans_pin # GPIO 
+        self.relay_1 = relay_1 # GPIO
+        self.relay_2 = relay_2 # GPIO
         
-        self.K_c = -8.0
-        self.tau_I = 126
-        self.tau_D = 2.5
-        self.alpha = 1.0
-        self.I = 0
+        self.switch_off()
+        self.screen_put("LET'S FREEZE")
 
+    def switch_off(self):
+        '''Turn off all outputs, switch relay to cooling'''
+        self.fans_pin.low() # Fans off
+        self.pwm_channel.pulse_width_percent(0) # Peltiers off
+        self.relay_cool() # Current direction to cool
 
-    def proportion(self):
-        e = self.set_point - self.T
-        
-        P = self.K_c * e
-        
-        self.I += e * (self.delay/1000)
-        I = (self.K_c/self.tau_I) * self.I
+    def screen_put(self, message='', row=0):
+        '''Display a message on the LCD screen'''
+        self.lcd.move_to(0, row)
+        self.lcd.putstr('{:^16}'.format(message)) # Always centred
 
-        D = -1 * self.K_c * self.tau_D * (self.T-self.last_T)/self.delay
-        self.last_T = self.T 
+    def read_inputs(self):
+        '''Read all ALTA inputs, return them as (temp, calibrate, ldr) tuple'''
+        temp = self.ptd.read()
+        calibrate = self.calibrate.read()
+        ldr = self.ldr_pin.read()
+        return temp, calibrate, ldr
+
+    def relay_cool(self):
+        '''Set current in cooling direction'''
+        self.pwm_channel.pulse_width_percent(0) #  Avoid hot switching
+        self.relay_1.low()
+        self.relay_2.high()
+
+    def relay_heat(self):
+        '''Set current in heating direction'''
+        self.pwm_channel.pulse_width_percent(0) #  Avoid hot switching
+        self.relay_1.high()
+        self.relay_2.low()
+
+    def flip_relay(self):
+        '''Reverse current direction'''
+        self.pwm_channel.pulse_width_percent(0) #  Avoid hot switching
+        self.relay_1.toggle()
+        self.relay_2.toggle()
         
-        PID = P + I + D
-        if PID > 100:
-            return 100 #  100 is the maximum value
-        if PID < 0:
+
+    def target_pwm(self, limit):
+        '''
+        Uses an empirically calculated polynomial fit to find the approximate
+        PWM necessary to maintain the limit temperature
+        '''
+        return sum([coeff * (limit**i)
+                    for i, coeff in enumerate(self.PWM_FIT_COEFFS)])
+
+    def overshoot(self, limit):
+        '''
+        In isothermal experiments at higher temperatures allow the aluminium
+        to get colder than the target temperature, as the sample lags behind.
+
+        This is a linear function of target temperature, with lower temperatures
+        having a smaller overshoot
+        '''
+        if limit < -25 or limit > 0:
+            return 0 # not optimised for T > 0, no offset for T < -25
+        else:
+            overshoot = 0.05*limit + 1.25 # Simple linear function
+            return ((10*overshoot)//1)/10 # Return 1 decimal place
+
+    def set_pwm(self, pwm):
+        '''Set pulse width duty cycle. If > 0 the fans are switched on'''
+        pwm = int(pwm)
+        if not 0 <= pwm <= 100:
+            pwm = 0
+        self.pwm_channel.pulse_width_percent(pwm)
+        if pwm == 0:
+            self.fans_pin.low() # Turn off fans
+        else:
+            self.fans_pin.high()
+
+    def timer(self):
+        '''Yields time in ms since timer was started'''
+        start = millis()
+        while True:
+            yield millis() - start # Not protected against roll-overs
+
+    def csvify(self, *args):
+        '''Convert all args to a string delimited by commas'''
+        return ','.join([str(arg) for arg in args])+'\n'
+
+    def get_repeat_number(self, filepath):
+        '''Find the number of the most recent repeat in the filepath'''
+        files = [f for f in os.listdir(filepath) if 'running' not in f]
+        if files == []:
             return 0
-        return int(PID)
+        return max([int(file.split('_')[0]) for file in files])
 
-    def loop_to_target(self, set_point):
-        filename = 'PID_Kc'+str(self.K_c)+'_limit'+str(set_point)+'.csv'
-        self.f = open('data/'+filename, 'w')
+    def melt(self, timer):
+        '''
+        Heat the sample to a target temperature, then hold at that temp
+        for a specified amount of time.
+        '''
+        status = 'Heat'
+        self.relay_heat()
+        self.set_pwm(100)
 
-        self.I = 0 #  resest PID control
-        
-        self.set_point = set_point
-        self.T = self.ptd.read()
-        if self.T > self.set_point:
-            self.relay_1(False) #  Cooling mode
+        t = next(timer)
+        wait_end = t + self.MELT_TIME
+        heat_flag = True
+        while t < wait_end:
+            t = next(timer)
+            T, _, _ = self.read_inputs()
 
-        self.I = 0 #  resest PID control
-        self.last_T = self.T #  for calculating derivative
-        
-        self.start = millis()
-        self.t = self.start
+            self.screen_put('{} {:5.1f} {:5d}'.format(status,
+                                                      T,
+                                                      t//1000), # ms to s
+                            row=1)
 
-        while self.t < self.start + 300 * 1e3:
-            self.T = self.ptd.read()
-            self.T_k = self.k.read()[0]
-            self.t = millis() - self.start
-            self.pw = self.proportion()
-            self.pwm_channel.pulse_width_percent(self.pw)
-
-            print(self.t, self.pw, self.T, self.T_k)
-            self.f.write(','.join([str(i) for i in (self.t,
-                                                self.pw,
-                                                self.T,
-                                                self.T_k)]) + '\n')
-            time.sleep_ms(self.delay)
+            if T < self.MELT_TEMPERATURE and heat_flag:
+                wait_end += self.DELAY_MS
+            elif heat_flag: # Should only enter this once
+                heat_flag = False
+                status = 'Wait'
+                self.set_pwm(0)
+                self.relay_cool() # safer to keep in this configuration
             
-        self.f.close()
-        self.pwm_channel.pulse_width_percent(0)
-        self.relay_1(True)
-
-    def fast_loop(self, set_point):
-        filename = 'fix_fast_cool_to_'+str(set_point)+'_Kc_'+str(self.K_c)+'.csv'
-        self.f = open('data/'+filename, 'w')
-
-        self.set_point = set_point
-        self.T = self.ptd.read()
-
-        self.I = 0
-        self.last_T = self.T
-
-        self.start = millis()
-        self.t = self.start
-
-        self.relay_1(False) #  Cooling mode
-        self.pw = 100
-        self.pwm_channel.pulse_width_percent(self.pw) # Full gas cooling
-
-        while self.T > self.set_point + 0.5:
-            #Cool as quickly as possible to the limit in this loop
-            self.T = self.ptd.read()
-            self.T_k = self.k.read()[0]
-            self.t = millis() - self.start
-            _ = self.proportion() #  Start adding up the integral contribution
-
-            print(self.t, self.pw, self.T, self.T_k)
-            self.f.write(','.join([str(i) for i in (self.t,
-                                                self.pw,
-                                                self.T,
-                                                self.T_k)]) + '\n')
-            time.sleep_ms(self.delay)
-            self.last_T = self.T #  For when D in PID starts
-
-
-        while self.t < (500*1000):
-            #Hold the temp constant with PWM
-            self.T = self.ptd.read()
-            self.T_k = self.k.read()[0]
-            self.t = millis() - self.start
-
-            self.pw = self.proportion()
-            self.pwm_channel.pulse_width_percent(self.pw)
-            
-
-            print(self.t, self.pw, self.T, self.T_k)
-            self.f.write(','.join([str(i) for i in (self.t,
-                                                self.pw,
-                                                self.T,
-                                                self.T_k)]) + '\n')
-            time.sleep_ms(self.delay)
-
-        self.f.close()
-        self.relay_1(True)
-        self.pwm_channel.pulse_width_percent(0)
-
-    def linear_cool(self, rate_min):
-        def target_T(t):
-            return rate * t + initial_T
-
-        min_in_ms = 60 * 1000
-        rate = rate_min / min_in_ms # degc / ms
-
-        initial_T = self.ptd.read()
-        initial_t = millis()
-
-        self.relay_1(False)
-        self.t = initial_t
-        self.T = initial_T
-
-        self.last_T = self.T
-
-        filename = 'linear_cool_Kc'+str(self.K_c)+'_rate'+str(rate_min)+'.csv'
-        self.f = open('data/'+filename, 'w')
-
-        while self.T > -20:
-            self.t = millis() - initial_t
-            self.T = self.ptd.read()
-            self.T_k = self.k.read()[0]
-            self.set_point = target_T(self.t)
-            self.pw = self.proportion()
-            self.pwm_channel.pulse_width_percent(self.pw)
-            
-            print(self.t, self.pw, self.T, self.T_k)
-            self.f.write(','.join([str(i) for i in (self.t,
-                                                self.pw,
-                                                self.T,
-                                                self.T_k)]) + '\n')
-            time.sleep_ms(self.delay)
-
-        self.f.close()
-        self.relay_1(True)
-        self.pwm_channel.pulse_width_percent(0)
-            
-
+            time.sleep_ms(self.DELAY_MS)
         
 
+    def isothermal(self, filepath, limit, repeat=0):
+        '''
+        Cool to the temperature denoted by limit as quickly as possible,
+        then hold at that temperature.
+        '''
+        self.screen_put('Isothermal {}'.format(repeat))
+
+        timer = self.timer()
+        offset = self.target_pwm(limit)
+        overshoot = self.overshoot(limit)
+
+        pid = PI_Controller(self.K_C, self.TAU_I, self.DELAY_S, limit, offset)
+
+        hold_flag = False
+        frozen_flag = False
+        status = 'Cool' # cool, hold or heat
+
+        self.relay_cool()
+        self.set_pwm(100) # Full power
+        
+        with open(filepath + '/running.csv', 'w') as f:
+            t = 0 # Time (ms)
+            T, calibrate, ldr = self.read_inputs() # Temperature, temperature, light dependent resistor
+            clear_intensity = ldr
+
+            while t < self.MAXIMUM_WAIT and not frozen_flag:
+                t = next(timer)
+                T, ambient, ldr = self.read_inputs()
+
+                self.screen_put('{} {:5.1f} {:5d}'.format(status,
+                                                          T,
+                                                          t//1000), # ms to s
+                                row=1)
+
+                data = self.csvify(t, T, ambient, ldr, status)
+                print(data, end='')
+                _ = f.write(data)
+
+                if ldr < clear_intensity - self.LDR_THRESHOLD:
+                    frozen_flag = True
+                    status = 'Froz'
+                    break # Sample is frozen
+                
+                if not hold_flag: # Haven't reached target temperature yet
+                    if T < limit - overshoot:
+                        status = 'Hold'
+                        hold_start = t
+                        hold_flag = True
+                else:
+                    pwm = pid.proportion(T)
+                    self.set_pwm(pwm)
+                    
+                time.sleep_ms(self.DELAY_MS)# Sleep is bad but can't see an alternative
+            else:
+                status = 'Warm'
+
+        self.set_pwm(0)
+        
+        filename = '/{}_isothermal{}_'.format(repeat, limit) # base filename
+        if T > 0:
+            #  LED has faded meaning false freezes are detected
+            os.remove(filepath+'running.csv')
+            return False # Gone wrong
+        if not hold_flag: #  Sample froze before reaching hold temperature
+            filename += 'early_{}'.format(T)
+        elif not frozen_flag: # Sample did not freeze within the max wait time
+            filename += 'liquid_{}'.format(t)
+        else:
+            filename += 'frozen_{}'.format(t)
+                                         
+        filename += '.csv'
+        print(filename)
+        os.rename(filepath+'/running.csv', filepath+filename)
+
+        self.melt(timer, status)
+        return True # Ready for the next isothermal experiment
+
+    def isothermal_experiment(self, filepath, limit):
+        repeat = self.get_repeat_number(filepath)
+        continue_flag = True
+
+        while continue_flag:
+            repeat += 1
+            continue_flag = self.isothermal(filepath, limit, repeat)
+            
+    
+    def linear_cool(self, filepath, rate=-1, repeat=0):
+        def target_temp(t):
+            # Y = mx + c
+            return rate * t + fast_cool
+        self.screen_put('Linear Cool {}'.format(repeat))
+        rate /= 1000 * 60 #  degC/ms
+        T, _, ldr = self.read_inputs()
+
+        clear_intensity = ldr
+
+        fast_cool = 0 #  Fast cool to this temperature
+        offset = self.target_pwm(fast_cool) # PWM for 0 degrees
+
+        timer = self.timer()
+        t = 0
+        pid = PI_Controller(self.K_C, self.TAU_I, self.DELAY_S, fast_cool, offset)
+
+        fast_cool_flag = False
+        status = 'Fast'
+        self.set_pwm(100) # Full power
+        with open(filepath+'/running.csv', 'w') as f:
+            while T > -25:
+                t = next(timer)
+                T, T_inner, ldr = self.read_inputs()
+                if fast_cool_flag:
+                    target_T = target_temp(t)
+                    pid.limit = target_T
+                    pwm = pid.proportion(T)
+                    self.set_pwm(pwm)
+                else:
+                    if T < fast_cool:
+                        status = 'Cool'
+                        fast_cool_flag = True
+                self.screen_put('{} {:5d} {:5.1f}'.format(status,
+                                                          t//1000,
+                                                          T), 1)
+
+                if ldr < clear_intensity - self.LDR_THRESHOLD:
+                    status = 'Froz'
+                    break
+                    
+                data = self.csvify(t, T, T_inner, ldr)
+                _ = f.write(data)
+                print(data, end='')
+
+                time.sleep_ms(200)
+                
+        self.set_pwm(0)
+
+        filename = '/{}_linear{}_'.format(repeat, rate) # base filename
+        if T > 0:
+            #  LED has faded meaning false freezes are detected
+            return False # Gone wrong
+        if status != 'Froz': # Sample did not freeze within the ramp
+            filename += 'liquid_{}'.format(t)
+        else:
+            filename += 'frozen_{}'.format(T)
+                                         
+        filename += '.csv'
+        print(filename)
+        os.rename(filepath+'/running.csv', filepath+filename)
+
+        self.melt(timer, status)
+        return True # Ready for the next isothermal experiment
+
+    def linear_experiment(self, filepath, rate=-1):
+        '''Repeatedly linearly cool/thaw at rate degrees/min'''
+        
+        repeat = self.get_repeat_number(filepath)
+        continue_flag = True
+
+        while continue_flag:
+            repeat += 1
+            continue_flag = self.linear_cool(filepath, rate, repeat)
+
+        
             
             
