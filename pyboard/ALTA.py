@@ -37,11 +37,11 @@ the run, using the following format:
 
 1. Repeat number
 2. Experiment type (isothermal, linear)
-    2.1 Experiment temperature (isothermal only)
+    2.1 Experiment temperature (isothermal) or rate (linear)
     2.2 Outcome (early, frozen, liquid) # isothermal only
 3. Time to freeze (ms)/ frozen temperature (deg C) # isothermal/linear
 
-eg. 23_isothermal_frozen_-15.0_frozen_34200.csv
+eg. 23_isothermal_-15.0_frozen_34200.csv
 Which is the 23rd repeat of an isothermal experiment at -15.0 deg C, which
 froze after 34200 ms at the target temperature.
 
@@ -63,11 +63,13 @@ from pi_controller import PI_Controller
 class ALTA():
     LDR_THRESHOLD = 150 # 150 less than the clear LDR value
     MAXIMUM_WAIT = 1000 * 60 * 2.5 #1000 * 60 * 60 * 2 # (ms) 2 hours in ms
-    PWM_FIT_COEFFS = (32.913, -1.623, 0.014)
+    # PWM_FIT_COEFFS is a polynomial to approximate the temperature at any
+    # given PWM value. This is for isothermal experiments to approx the offset
+    PWM_FIT_COEFFS = (32.913, -1.623, 0.014) # magic numbers
     DELAY_MS = 200 # (ms), time between readings
-    DELAY_S = 0.2 # (s)
-    MELT_TEMPERATURE = 15 # (deg C)
-    MELT_TIME = 1000 * 60 # (s)
+    DELAY_S = DELAY_MS / 1000 # (s)
+    MELT_TEMPERATURE = 15 # (deg C) Temperature to hold at while sample melts
+    MELT_TIME = 1000 * 60 # (ms) Wait 1 minute
 
     K_C = -10 #  Proportional constant for PI control
     TAU_I = 100 #  Integrational time constant for PI control
@@ -101,7 +103,7 @@ class ALTA():
         self.relay_2 = relay_2 # GPIO
         
         self.switch_off()
-        self.screen_put("LET'S FREEZE")
+        self.screen_put("LET'S FREEZE") # Welcome message
 
     def switch_off(self):
         '''Turn off all outputs, switch relay to cooling'''
@@ -383,6 +385,3 @@ class ALTA():
             repeat += 1
             continue_flag = self.linear_cool(filepath, rate, repeat)
 
-        
-            
-            
