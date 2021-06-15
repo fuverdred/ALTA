@@ -536,11 +536,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.4142136"
-     inkscape:cx="578.80245"
-     inkscape:cy="115.39211"
+     inkscape:zoom="1"
+     inkscape:cx="403.40981"
+     inkscape:cy="108.12516"
      inkscape:document-units="mm"
-     inkscape:current-layer="layer7"
+     inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:window-width="1680"
      inkscape:window-height="987"
@@ -567,8 +567,16 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     style="display:none"
-     transform="translate(-13.305757,-79.755933)" />
+     style="display:inline"
+     transform="translate(-13.305757,-79.755933)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.5899999, 0.52999996999999999;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect4908"
+       width="227.27708"
+       height="102.92291"
+       x="14.099507"
+       y="80.428833" />
+  </g>
   <g
      inkscape:groupmode="layer"
      id="layer5"
