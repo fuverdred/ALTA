@@ -58,7 +58,21 @@ For calibrating the device another PRT is inserted into the sample tube, filled 
 The total cost can be as low as £150, a large portion of which depends on the quality of the Peltier elements chosen.
 
 ## PyBoard Code
-The pyBoard will run any code inside main.py. Currently it initiates all of the methods of interaction with ALTA:
+The pyBoard will run any code inside main.py on start-up (right after boot.py, although this can most likely be left alone).
+
+To access the pyBoard REPL:
+- Find out what COM port the pyboard is on (Device manager->ports)
+- Open a serial communication program such as PuTTY and enter the correct COM port, 115200 Baud
+
+It should open a python REPL with the same scope as main.py, allowing direct interaction with ALTA.
+
+### PyBoard Contents
+- boot.py => Leave this alone
+- main.py => This will initiate all of the parts of ALTA, and either start an experiment automatically or wait for the user to execute commands via the REPL.
+- ALTA.py => This contains the ALTA class, all of the necessary code to run ALTA and collect data from it.
+
+
+Currently it initiates all of the methods of interaction with ALTA:
 - Built in PRT
 - Sample PRT
 - Light dependent resistor (LDR) read via analogue read
@@ -66,8 +80,3 @@ The pyBoard will run any code inside main.py. Currently it initiates all of the 
 
 It also creates an instance of the ALTA class, which has methods for running ice nucleation experiments.
 
-To interact with the pyboard via serial:
-- Find out what COM port the pyboard is on (Device manager->ports)
-- Open a serial communication program such as PuTTY and enter the correct COM port, 115200 Baud
-
-It should open a python REPL with the same scope as main.py, allowing direct interaction with ALTA.
