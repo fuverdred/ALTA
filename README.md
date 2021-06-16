@@ -48,6 +48,7 @@ For calibrating the device another PRT is inserted into the sample tube, filled 
 - 2x MAX31865 PRT-to-digital converters.
 - 2x Platinum resistance thermometers. I used PT100, one in cylindrical form for the aluminium case, and one in surface element form which was submerged in the sample for calibration.
 - LCD screen. This can be used to display the current status of ALTA, particularly useful if it is not plugged into a computer.
+- Two channel relay module. This will allow heating as well as cooling.
 - 1mH Inductor.
 - 10V step down converter.
 - 5V step down converter. This is to power the micro-controller, not necessary if you will always have a computer plugged into it.
