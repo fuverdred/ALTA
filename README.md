@@ -5,7 +5,7 @@ A version of an Automated Lag-Time Apparatus (ALTA), as described by Baldwin and
 
 This version uses two Peltier elements for cooling and heating, which sandwich an aluminium block containing the sample. This is shown in the cross section diagram. The aluminium block also contains a platinum resistance thermometer (PRT) and an LED/light dependent resistor (LDR) combination which shines through the sample. When the sample freezes it changes opacity, which is detected by a change in the resistance of the LDR.
 
-![ALTA_setup](https://github.com/fuverdred/ALTA/blob/master/images/ALTA_cross_section.svg | width= 80)
+<img src="https://github.com/fuverdred/ALTA/blob/master/images/ALTA_cross_section.svg" alt="ALTA_setup" width="70"/>
 
 ### Electronics
 
