@@ -27,7 +27,7 @@ The temperature is monitored via the PRT built into the aluminium block. The PRT
 
 For calibrating the device another PRT is inserted into the sample tube, filled with Ethylene-glycol which has similar thermal properties to water, without the problem of it freezing until much lower temperatures. This allows the small time and temperature lag between the sample and built in PRT to be accounted for, an example is shown in the graph below.
 
-![calibrate](https://github.com/fuverdred/ALTA/blob/master/images/calibrate.svg)
+![calibrate](https://github.com/fuverdred/ALTA/blob/master/images/calibrate_8.svg)
 
 ## PyBoard Code
 The pyBoard will run any code inside main.py. Currently it initiates all of the methods of interaction with ALTA:
