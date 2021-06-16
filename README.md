@@ -78,9 +78,8 @@ It should open a python REPL with the same scope as main.py, allowing direct int
 - pyb_i2c_lcd.py => Third party LCD screen library to enable the status to be shown on an LCD display.
 - lcd_api.py => Third party LCD screen library
 
-# ======================================================
+
 # Automated Lag-Time Apparatus (ALTA)
-# ======================================================
 
 This is the main library for ALTA, stored on github.com/fuverdred/ALTA
 
@@ -96,6 +95,7 @@ the sample is frozen.
 Outputs:
 1. Relay settings. These control the direction of the flow of current as
 follows:
+
                 relay 1 |   on    | off
                 --------+-------------------
         relay 2     on  |    -    |  Heating
