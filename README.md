@@ -78,4 +78,58 @@ It should open a python REPL with the same scope as main.py, allowing direct int
 - pyb_i2c_lcd.py => Third party LCD screen library to enable the status to be shown on an LCD display.
 - lcd_api.py => Third party LCD screen library
 
+# ======================================================
+# Automated Lag-Time Apparatus (ALTA)
+# ======================================================
+
+This is the main library for ALTA, stored on github.com/fuverdred/ALTA
+
+## INPUTS & OUTPUTS
+
+Inputs:
+1. Aluminium body temperature from a platinum resistance thermometer drilled
+into the aluminium just below the sample vial.
+2. Calibration platinum resistance thermometer placed in the sample container.
+3. A light dependent resistor (LDR) value which dictataes whether or not
+the sample is frozen.
+
+Outputs:
+1. Relay settings. These control the direction of the flow of current as
+follows:
+                relay 1 |   on    | off
+                --------+-------------------
+        relay 2     on  |    -    |  Heating
+                    off | Cooling |     -
+                    
+2. Pulse width modulation (PWM) percentage duty cycle, which is smoothed to
+an approximate DC current (maximum 0.5A ripple)
+3. Fans. These are turned on for cooling and off for the rest as they are
+loud and annoying
+4. LCD screen for displaying the current status of ALTA
+
+
+## OUTPUT FORMAT
+While an experimental repeat is running the data is written to a file called
+running.csv.
+
+After completion of the run the file is renamed to reflect the outcome of
+the run, using the following format:
+
+1. Repeat number
+2. Experiment type (isothermal, linear)
+    2.1 Experiment temperature (isothermal) or rate (linear)
+    2.2 Outcome (early, frozen, liquid) # isothermal only
+3. Time to freeze (ms)/ frozen temperature (deg C) # isothermal/linear
+
+eg. 23_isothermal_-15.0_frozen_34200.csv
+Which is the 23rd repeat of an isothermal experiment at -15.0 deg C, which
+froze after 34200 ms at the target temperature.
+
+Each file contains the following columns, separated by commas:
+1. Time (ms)
+2. Aluminium temperature (deg C)
+    2.1 Internal temperature (deg C) for calibration
+3. LDR value (Arb units)
+4. ALTA status (cool, hold, heat)
+
 
