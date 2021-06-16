@@ -79,9 +79,9 @@ It should open a python REPL with the same scope as main.py, allowing direct int
 - lcd_api.py => Third party LCD screen library
 
 
-# Automated Lag-Time Apparatus (ALTA)
+# ALTA.py
 
-This is the main library for ALTA, stored on github.com/fuverdred/ALTA
+This is the main library for ALTA. Here we will briefly go through the constants it contains, the output format of data and the basic functions which can be used. The constants will depend on your particular set up, so we will also look at some of the calibration functions which are implemented, although I would recommend extensive testing to find what is best.
 
 ## INPUTS & OUTPUTS
 
