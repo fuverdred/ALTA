@@ -40,19 +40,20 @@ For calibrating the device another PRT is inserted into the sample tube, filled 
 ### Parts List
 - 2x Peltier elements. I would recommend around 4cm x 4cm as this is closer to typical CPU sizes and will make obtaining heat sinks easier. You will also need to consider their maximum power ratings and how you will supply the power.
 - 2x Heat sinks. Typical fan assisted CPU heat sinks were able to achieve sub -30°C temperatures, suitable for most ice nucleation experiments.
-- Thermal paste
-- LED
-- Light Dependent Resistor
-- Micro-controller of some sort. Any of the many arduinos will work fine, or even a raspberry pi, although not with the code in this repository. I think the pyBoard has several key advantages for this project. First it has a REPL meaning you can debug your programs and control ALTA in real time, second it has built in SD card reader so no other peripheral is needed for data storage, third it has built in analog read which raspberry pis do not.
-- 2x MAX31865 PRT-to-digital converters
+- Power supply. Peltiers typically require large currents, although the total power consumption  doesn't require specialist equipment. Look at powerful laptop chargers or 3D printer power supplies, which can normally be purchased at a reasonable price.
+- Thermal paste.
+- LED.
+- Light Dependent Resistor.
+- Micro-controller of some sort. Any of the many arduinos will work fine, or even a Raspberry Pi, although not with the code in this repository. I think the pyBoard has several key advantages for this project. First it has a REPL meaning you can debug your programs and control ALTA in real time, second it has built in SD card reader so no other peripheral is needed for data storage, third it has built in analog read which Raspberry Pis do not.
+- 2x MAX31865 PRT-to-digital converters.
 - 2x Platinum resistance thermometers. I used PT100, one in cylindrical form for the aluminium case, and one in surface element form which was submerged in the sample for calibration.
-- 1mH Inductor
-- 10V step down converter
-- 5V step down converter
+- 1mH Inductor.
+- 10V step down converter.
+- 5V step down converter. This is to power the micro-controller, not necessary if you will always have a computer plugged into it.
 - 1x Power MOSFET. Make doesn't really matter, as long as it is rated for the currents supplied to the Peltier. Of course the schematic will have to change based on whether it is n-type (as here) or p-type.
 - Block of aluminium with the same face size as the Peltier coolers. This will need three holes drilled to accomodate the sample, LDR/LED and PRT.
 - Insulation. This can be as simple as cutting expanded polystyrene to shape and glueing it to the edges of the aluminium block to keep the temperature low.
-- Assorted electrical sundries (resistors, capacitors, diodes, wires...)
+- Assorted electrical sundries (resistors, capacitors, diodes, wires...).
 
 The total cost can be as low as £150, a large portion of which depends on the quality of the Peltier elements chosen.
 
