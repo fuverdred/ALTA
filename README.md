@@ -13,14 +13,21 @@ The Peltiers are connected in series across a relay, which allows current to flo
 
 ![power_circuit](https://github.com/fuverdred/ALTA/blob/master/images/circuit.png)
 
-The above image is the rough circuit board for powering ALTA. Note that some other circuitry is required for the detection of freezing, shown in the schematic below. The board is split in half, with the left dealing with supplying power to the Peltiers, and the right with two voltage step downs (30V -> 10V -> 5V) to allow the fans and pyBoard to all be powered by one supply. The actual implementation of the electronics can be down to the user, this just shows the way I did it (and I'm far from an expert).
+The above image is the rough circuit board for powering ALTA. Note that some other circuitry is required for the detection of freezing, shown in the schematic below. The board is split in half, with the left dealing with supplying power to the Peltiers also shown in the schematic below, and the right with two voltage step downs (30V -> 10V -> 5V) to allow the fans and pyBoard to all be powered by one supply. This makes ALTA fully self contained, allowing it to be turned on and left alone without having to leave a computer attached to power the pyBoard. The gate drivers ensure the PWM MOSFET is switching quickly, meaning we don't have to heatsink it. The fans switch refers to the fans attached to the heatsinks on the Peltier elements. Using a gate driver on them is overkill, in fact the fans can be left on the whole time if needs be, they are essential while the sample is being cooled, and don't make much difference when the sample is being heated.
+
+The actual implementation of the electronics can be down to the user, this just shows the way I did it (and I'm far from an expert).
 
 ![schematic](https://github.com/fuverdred/ALTA/blob/master/images/schematic.png)
 
 The schematic shows the power circuitry more clearly, along with a voltage divider for measuring the LDR to check if the sample is frozen. The key part of the power circuitry is the inductor and diode for smoothing the PWM. This increases the Peltier's life time. The current set-up of 1mH inductor and diode smooths the current ripple to about 15% of the maximum at full power.
 
-## Temperature Measurements
-For experiments a platinum resistance thermometer (PRT) (PT100) is situated just under the bottom of the sample tube. This quickly and reliably tells the temperature to a precision of 0.1K. For calibrating the device another PRT is inserted into the sample tube, filled with Ethylene-glycol which has similar thermal properties to water, without the problem of it freezing until much lower temperatures. This shows the small time and temperature lag between the sample and built in PRT, which must be accounted for.
+### Temperature Measurements
+
+The temperature is monitored via the PRT built into the aluminium block. The PRT is read by a MAX31865 RTD-to-Digital converter. This is not shown in any of the schematics so far, as it is attached straight to the pyBoard and doesn't require any external power or circuitry. The MAX31865 communicates with the pyBoard via serial peripheral interface (SPI), and the library is included in the software section.
+
+For calibrating the device another PRT is inserted into the sample tube, filled with Ethylene-glycol which has similar thermal properties to water, without the problem of it freezing until much lower temperatures. This allows the small time and temperature lag between the sample and built in PRT to be accounted for, an example is shown in the graph below.
+
+![calibrate](https://github.com/fuverdred/ALTA/blob/master/images/calibrate.svg)
 
 ## PyBoard Code
 The pyBoard will run any code inside main.py. Currently it initiates all of the methods of interaction with ALTA:
