@@ -47,6 +47,7 @@ For calibrating the device another PRT is inserted into the sample tube, filled 
 - Micro-controller of some sort. Any of the many arduinos will work fine, or even a Raspberry Pi, although not with the code in this repository. I think the pyBoard has several key advantages for this project. First it has a REPL meaning you can debug your programs and control ALTA in real time, second it has built in SD card reader so no other peripheral is needed for data storage, third it has built in analog read which Raspberry Pis do not.
 - 2x MAX31865 PRT-to-digital converters.
 - 2x Platinum resistance thermometers. I used PT100, one in cylindrical form for the aluminium case, and one in surface element form which was submerged in the sample for calibration.
+- LCD screen. This can be used to display the current status of ALTA, particularly useful if it is not plugged into a computer.
 - 1mH Inductor.
 - 10V step down converter.
 - 5V step down converter. This is to power the micro-controller, not necessary if you will always have a computer plugged into it.
@@ -76,12 +77,4 @@ It should open a python REPL with the same scope as main.py, allowing direct int
 - pyb_i2c_lcd.py => Third party LCD screen library to enable the status to be shown on an LCD display.
 - lcd_api.py => Third party LCD screen library
 
-
-Currently it initiates all of the methods of interaction with ALTA:
-- Built in PRT
-- Sample PRT
-- Light dependent resistor (LDR) read via analogue read
-- Fans pin, standard IO pin
-
-It also creates an instance of the ALTA class, which has methods for running ice nucleation experiments.
 
