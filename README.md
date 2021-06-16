@@ -5,13 +5,14 @@ A version of an Automated Lag-Time Apparatus (ALTA), as described by Baldwin and
 
 This version uses two Peltier elements for cooling and heating, which sandwich an aluminium block containing the sample. This is shown in the cross section diagram. The aluminium block also contains a platinum resistance thermometer (PRT) and an LED/light dependent resistor (LDR) combination which shines through the sample. When the sample freezes it changes opacity, which is detected by a change in the resistance of the LDR.
 
-<img src="https://github.com/fuverdred/ALTA/blob/master/images/ALTA_cross_section.svg" alt="ALTA_setup" width="70"/>
+<img src="https://github.com/fuverdred/ALTA/blob/master/images/ALTA_cross_section.svg" alt="ALTA_setup" width="250"/>
 
 ### Electronics
 
 The Peltiers are connected in series across a relay, which allows current to flow in both directions for cooling and heating. Each Peltier is rated at 15.5 V, 4.5 A, powered by a 30 V, 5 A rated power supply they are almost at full power. The power supplied to the Peltier elements is controlled by a pulse width modulated (PWM) MOSFET, at a frequency of 10 kHz. The PWM signal, as well as relay switching and temperature detection are all controlled by a pyBoard 1.1.
 
-![power_circuit](https://github.com/fuverdred/ALTA/blob/master/images/circuit.png | width=70)
+
+<img src="https://github.com/fuverdred/ALTA/blob/master/images/circuit.png" alt="circuit" width="250"/>
 
 The above image is the rough circuit board for powering ALTA. Note that some other circuitry is required for the detection of freezing, shown in the schematic below. The board is split in half, with the left dealing with supplying power to the Peltiers also shown in the schematic below, and the right with two voltage step downs (30V -> 10V -> 5V) to allow the fans and pyBoard to all be powered by one supply. This makes ALTA fully self contained, allowing it to be turned on and left alone without having to leave a computer attached to power the pyBoard. The gate drivers ensure the PWM MOSFET is switching quickly, meaning we don't have to heatsink it. The fans switch refers to the fans attached to the heatsinks on the Peltier elements. Using a gate driver on them is overkill, in fact the fans can be left on the whole time if needs be, they are essential while the sample is being cooled, and don't make much difference when the sample is being heated.
 
