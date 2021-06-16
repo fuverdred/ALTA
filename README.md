@@ -70,6 +70,11 @@ It should open a python REPL with the same scope as main.py, allowing direct int
 - boot.py => Leave this alone
 - main.py => This will initiate all of the parts of ALTA, and either start an experiment automatically or wait for the user to execute commands via the REPL.
 - ALTA.py => This contains the ALTA class, all of the necessary code to run ALTA and collect data from it.
+- max31865.py => Library to interface with the MAX31865 RTD-to-digital converter
+- max31855.py => Library to interface with the MAX31855 Thermocouple reader. This is a more common chip than the 31865, and could come in useful, although I'd recommend the platinum resistance thermometers for increased stability, precision and accuracy.
+- pi_controller.py => Proportional Integral control method for holding a given temperature. Note this is more commonly known as PID control, but the derivative component is not implemented or needed here.
+- pyb_i2c_lcd.py => Third party LCD screen library to enable the status to be shown on an LCD display.
+- lcd_api.py => Third party LCD screen library
 
 
 Currently it initiates all of the methods of interaction with ALTA:
