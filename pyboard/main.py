@@ -82,7 +82,7 @@ alta = ALTA(ptd,
             relay_1,
             relay_2)
 
-filepath = 'data/linear_test'
+filepath = 'data/'
 
 # WRITE ANY CODE YOU WANT TO EXECUTE ON TURNING THE PYBOARD ON HERE
 
