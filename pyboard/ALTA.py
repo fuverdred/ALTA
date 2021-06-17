@@ -1,7 +1,7 @@
 '''
-======================================================
-Automated Lag-Time Apparatus (ALTA)
-======================================================
+# ======================================================
+# Automated Lag-Time Apparatus (ALTA)
+# ======================================================
 
 This is the main library for ALTA, stored on github.com/fuverdred/ALTA
 
@@ -10,7 +10,8 @@ This is the main library for ALTA, stored on github.com/fuverdred/ALTA
 Inputs:
 1. Aluminium body temperature from a platinum resistance thermometer drilled
 into the aluminium just below the sample vial.
-2. A light dependent resistor (LDR) value which dictataes whether or not
+2. Calibration platinum resistance thermometer placed in the sample container.
+3. A light dependent resistor (LDR) value which dictataes whether or not
 the sample is frozen.
 
 Outputs:
@@ -62,7 +63,7 @@ from pi_controller import PI_Controller
 
 class ALTA():
     LDR_THRESHOLD = 150 # 150 less than the clear LDR value
-    MAXIMUM_WAIT = 1000 * 60 * 2.5 #1000 * 60 * 60 * 2 # (ms) 2 hours in ms
+    MAXIMUM_WAIT = 1000 * 60 * 2.5 # (ms)
     # PWM_FIT_COEFFS is a polynomial to approximate the temperature at any
     # given PWM value. This is for isothermal experiments to approx the offset
     PWM_FIT_COEFFS = (32.913, -1.623, 0.014) # magic numbers
